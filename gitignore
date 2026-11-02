@@ -1,0 +1,4 @@
+node_modules/
+android/
+www/jspdf.umd.min.js
+www/jspdf.plugin.autotable.min.js

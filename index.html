@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OT Planner</title>
+<style>
+:root{--ink:#14211d;--mut:#5b6b66;--bg:#eef3f1;--card:#fff;--scrub:#1f5c4d;--scrub2:#16463a;--line:#cfdbd7;--warn:#a4452c;--fel:#7a5a10}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg);padding-bottom:84px}
+header{background:var(--scrub);color:#fff;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5}
+header h1{font-size:19px;margin:0;font-weight:650;letter-spacing:.2px}
+header button{background:transparent;border:1px solid #ffffff80;color:#fff;border-radius:8px;padding:6px 10px;font-size:14px}
+main{padding:14px;max-width:640px;margin:auto}
+.tabs{display:flex;gap:8px;margin-bottom:12px}
+.tabs button{flex:1;padding:10px;border:1px solid var(--line);background:var(--card);border-radius:10px;font-size:15px;color:var(--ink)}
+.tabs button.on{background:var(--scrub);color:#fff;border-color:var(--scrub)}
+.panel{display:none}.panel.on{display:block}
+.snap{display:flex;gap:10px;margin-bottom:6px}
+.snap label{flex:1;text-align:center;background:var(--scrub2);color:#fff;padding:14px 8px;border-radius:12px;font-weight:600;cursor:pointer}
+.snap input{display:none}
+#status{min-height:22px;font-size:14px;color:var(--mut);margin:6px 2px 10px}
+#status.err{color:var(--warn)}
+#thumbs{display:flex;gap:6px;overflow-x:auto;margin-bottom:8px}
+#thumbs img{height:64px;border-radius:6px;border:1px solid var(--line)}
+form{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px 10px}
+form .full{grid-column:1/-1}
+label.f{display:block;font-size:13px;color:var(--mut);margin-bottom:3px}
+input[type=text],input[type=number],input[type=tel],input[type=date],select,textarea{width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:9px;background:#fbfdfc;color:var(--ink)}
+textarea{min-height:64px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible,label.snap-l:focus-within{outline:3px solid #7fc4ae;outline-offset:1px}
+.row{display:flex;gap:10px;grid-column:1/-1}
+.row button{flex:1;padding:13px;border-radius:11px;border:0;font-size:16px;font-weight:600}
+.save{background:var(--scrub);color:#fff}.clear{background:#e3ebe8;color:var(--ink)}
+.case{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--scrub);border-radius:12px;padding:10px 12px;margin-bottom:9px}
+.case.fel{border-left-color:var(--fel)}
+.case b{font-size:16px}.case small{color:var(--mut);display:block}
+.case .act{display:flex;gap:8px;margin-top:6px}
+.case .act button{border:1px solid var(--line);background:#f6faf8;border-radius:8px;padding:5px 12px;font-size:14px}
+.empty{text-align:center;color:var(--mut);padding:30px 10px}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:10px}
+.bar button{flex:1;padding:13px;border-radius:11px;border:0;background:var(--scrub);color:#fff;font-size:16px;font-weight:600}
+dialog{border:0;border-radius:14px;padding:16px;width:min(92vw,420px)}
+dialog::backdrop{background:#0008}
+#print{display:none}
+@media print{
+ body>*:not(#print){display:none!important}
+ #print{display:block;font:11pt/1.35 system-ui,sans-serif;color:#000}
+ #print h2{font-size:14pt;margin:14pt 0 2pt;border-bottom:2px solid #000}
+ #print h3{font-size:11pt;margin:8pt 0 3pt}
+ #print table{width:100%;border-collapse:collapse;font-size:9.5pt}
+ #print th,#print td{border:1px solid #666;padding:3pt 4pt;text-align:left;vertical-align:top}
+ #print tr{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<header><h1>OT Planner</h1><button id="setBtn" type="button">Settings</button></header>
+<main>
+ <div class="tabs"><button class="on" data-t="add">Add case</button><button data-t="list">Cases (<span id="cnt">0</span>)</button></div>
+
+ <section class="panel on" id="add">
+  <div class="snap">
+   <label>Take photo<input type="file" id="cam" accept="image/*" capture="environment"></label>
+   <label>From gallery<input type="file" id="gal" accept="image/*" multiple></label>
+  </div>
+  <div id="thumbs"></div>
+  <div id="status">Photograph the sticker or handwritten note to fill the form. Check every field before saving.</div>
+
+  <form id="frm" autocomplete="off">
+   <div><label class="f" for="consultant">Consultant</label><select id="consultant" required><option value="">Select</option><option>RN</option><option>SK</option><option>SJ</option><option>PS</option></select></div>
+   <div><label class="f" for="ot">OT</label><select id="ot" required><option value="">Select</option><option>Consultant</option><option>Fellow</option></select></div>
+   <div><label class="f" for="otno">OT No</label><select id="otno" required><option value="">Select</option><option>4</option><option>5</option><option>6</option><option>7</option><option>11</option></select></div>
+   <div><label class="f" for="sex">Sex</label><select id="sex" required><option value="">Select</option><option>M</option><option>F</option></select></div>
+   <div class="full"><label class="f" for="name">Name</label><input type="text" id="name" required></div>
+   <div><label class="f" for="uhid">UHID</label><input type="text" id="uhid" required></div>
+   <div><label class="f" for="age">Age</label><input type="number" id="age" min="0" max="120" inputmode="numeric"></div>
+   <div class="full"><label class="f" for="dx">Diagnosis</label><input type="text" id="dx"></div>
+   <div class="full"><label class="f" for="plan">Plan</label><input type="text" id="plan"></div>
+   <div><label class="f" for="mob">Mobile no</label><input type="tel" id="mob" inputmode="tel"></div>
+   <div><label class="f" for="alt">Alternate mob no</label><input type="tel" id="alt" inputmode="tel"></div>
+   <div class="full"><label class="f" for="comorb">Comorbidities</label><input type="text" id="comorb" placeholder="e.g. DM, HTN"></div>
+   <div class="full"><label class="f" for="pdosx">PDOSx</label><input type="date" id="pdosx"></div>
+   <div class="full"><label class="f" for="remarks">Remarks</label><textarea id="remarks"></textarea></div>
+   <div class="row"><button type="button" class="clear" id="clr">Clear</button><button type="submit" class="save" id="saveBtn">Save case</button></div>
+  </form>
+ </section>
+
+ <section class="panel" id="list"><div id="cases"></div></section>
+</main>
+
+<div class="bar"><button id="pdfBtn" type="button">Export PDF</button></div>
+
+<dialog id="dlg">
+ <h3 style="margin-top:0">Settings</h3>
+ <label class="f" for="key">Anthropic API key (for reading photos)</label>
+ <input type="text" id="key" placeholder="sk-ant-..." autocomplete="off">
+ <p style="font-size:13px;color:var(--mut)">Stored only on this phone. Photos are sent to Anthropic for reading and need internet. Without a key you can still enter cases by hand.</p>
+ <div class="row" style="margin-top:8px"><button type="button" class="clear" id="dlgX">Close</button><button type="button" class="save" id="dlgS">Save</button></div>
+</dialog>
+
+<dialog id="fdlg">
+ <h3 style="margin-top:0">Export PDF</h3>
+ <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+  <div style="grid-column:1/-1"><label class="f" for="fc">Consultant</label><select id="fc"><option value="">All</option><option>RN</option><option>SK</option><option>SJ</option><option>PS</option></select></div>
+  <div><label class="f" for="fa">PDOSx from</label><input type="date" id="fa"></div>
+  <div><label class="f" for="fb">PDOSx to</label><input type="date" id="fb"></div>
+ </div>
+ <div class="row" style="margin-top:10px"><button type="button" class="clear" id="fToday">Today</button><button type="button" class="clear" id="fTom">Tomorrow</button><button type="button" class="clear" id="fReset">Reset</button></div>
+ <p id="fcount" style="font-size:14px;color:var(--mut);margin:10px 0 4px"></p>
+ <div class="row"><button type="button" class="clear" id="fx">Cancel</button><button type="button" class="save" id="fgo">Export PDF</button></div>
+</dialog>
+
+<div id="print"></div>
+
+<script src="jspdf.umd.min.js"></script>
+<script src="jspdf.plugin.autotable.min.js"></script>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var FIELDS=["consultant","ot","otno","name","uhid","age","sex","dx","plan","mob","alt","comorb","pdosx","remarks"];
+var cases=[],editId=null;
+
+function load(){try{cases=JSON.parse(localStorage.getItem("otcases")||"[]")}catch(e){cases=[]}}
+function persist(){try{localStorage.setItem("otcases",JSON.stringify(cases))}catch(e){status("Could not save on this device.",1)}}
+function status(t,err){var s=$("status");s.textContent=t;s.className=err?"err":""}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function fmtDate(d){if(!d)return"";var p=d.split("-");return p.length==3?p[2]+"/"+p[1]+"/"+p[0]:d}
+
+/* tabs */
+document.querySelectorAll(".tabs button").forEach(function(b){b.onclick=function(){
+ document.querySelectorAll(".tabs button").forEach(function(x){x.classList.toggle("on",x===b)});
+ document.querySelectorAll(".panel").forEach(function(p){p.classList.toggle("on",p.id===b.dataset.t)});
+ if(b.dataset.t==="list")render();
+}});
+
+/* form */
+function getForm(){var o={};FIELDS.forEach(function(f){o[f]=$(f).value.trim()});return o}
+function setForm(o){FIELDS.forEach(function(f){if(o[f]!=null&&o[f]!=="")$(f).value=o[f]})}
+function clearForm(){$("frm").reset();editId=null;$("saveBtn").textContent="Save case";$("thumbs").innerHTML="";status("Photograph the sticker or handwritten note to fill the form. Check every field before saving.")}
+$("clr").onclick=clearForm;
+$("frm").onsubmit=function(e){e.preventDefault();var o=getForm();
+ if(editId){cases=cases.map(function(c){return c.id===editId?Object.assign({id:editId},o):c})}
+ else{o.id=Date.now().toString(36);cases.push(o)}
+ persist();clearForm();status("Case saved.");render()};
+
+/* list */
+function render(){
+ $("cnt").textContent=cases.length;
+ var box=$("cases");
+ if(!cases.length){box.innerHTML='<div class="empty">No cases yet. Add one from a photo or by hand.</div>';return}
+ var sorted=sortCases(cases);
+ box.innerHTML=sorted.map(function(c){
+  return '<div class="case'+(c.ot==="Fellow"?' fel':'')+'"><b>'+esc(c.name)+'</b> <span>'+esc(c.age)+(c.sex?'/'+esc(c.sex):'')+'</span>'
+  +'<small>'+esc(c.consultant)+' · '+esc(c.ot)+' OT '+esc(c.otno)+' · UHID '+esc(c.uhid)+'</small>'
+  +'<small>'+esc(c.dx)+(c.plan?' → '+esc(c.plan):'')+'</small>'
+  +(c.comorb?'<small>Comorbidities: '+esc(c.comorb)+'</small>':'')
+  +(c.pdosx?'<small>PDOSx '+fmtDate(c.pdosx)+'</small>':'')
+  +'<div class="act"><button data-e="'+c.id+'">Edit</button><button data-d="'+c.id+'">Delete</button></div></div>'}).join("");
+ box.querySelectorAll("[data-e]").forEach(function(b){b.onclick=function(){
+  var c=cases.filter(function(x){return x.id===b.dataset.e})[0];if(!c)return;
+  $("frm").reset();setForm(c);editId=c.id;$("saveBtn").textContent="Update case";
+  document.querySelector('[data-t="add"]').click();window.scrollTo(0,0)}});
+ box.querySelectorAll("[data-d]").forEach(function(b){b.onclick=function(){
+  if(confirm("Delete this case?")){cases=cases.filter(function(x){return x.id!==b.dataset.d});persist();render()}}});
+}
+function sortCases(a){return a.slice().sort(function(x,y){
+ return (x.pdosx||"").localeCompare(y.pdosx||"")||(+x.otno||0)-(+y.otno||0)||(x.name||"").localeCompare(y.name||"")})}
+
+/* PDF: grouped by consultant, then Consultant OT / Fellow OT, ordered by OT No */
+function doExport(cases){
+ if(!cases.length){alert("No cases match these filters.");return}
+ var order=["RN","SK","SJ","PS"],h='<h1 style="font-size:16pt;margin:0">Urology OT List</h1>';
+ var cons=order.filter(function(c){return cases.some(function(x){return x.consultant===c})});
+ cases.forEach(function(x){if(x.consultant&&cons.indexOf(x.consultant)<0)cons.push(x.consultant)});
+ cons.forEach(function(c){
+  h+='<h2>Consultant '+esc(c)+'</h2>';
+  ["Consultant","Fellow"].forEach(function(t){
+   var rows=cases.filter(function(x){return x.consultant===c&&x.ot===t}).sort(function(a,b){return (+a.otno||0)-(+b.otno||0)||(a.pdosx||"").localeCompare(b.pdosx||"")});
+   if(!rows.length)return;
+   h+='<h3>'+t+' OT</h3><table><tr><th>OT</th><th>Name</th><th>Age/Sex</th><th>UHID</th><th>Diagnosis</th><th>Plan</th><th>Comorbidities</th><th>Mobile</th><th>PDOSx</th><th>Remarks</th></tr>';
+   rows.forEach(function(r){h+='<tr><td>'+esc(r.otno)+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.age)+'/'+esc(r.sex)+'</td><td>'+esc(r.uhid)+'</td><td>'+esc(r.dx)+'</td><td>'+esc(r.plan)+'</td><td>'+esc(r.comorb)+'</td><td>'+esc(r.mob)+(r.alt?'<br>'+esc(r.alt):'')+'</td><td>'+fmtDate(r.pdosx)+'</td><td>'+esc(r.remarks)+'</td></tr>'});
+   h+='</table>'});
+ });
+ $("print").innerHTML=h;window.print()}
+
+/* PDF file (installed app): real PDF saved and shared; browser falls back to print */
+function pdfExport(list){
+ if(!list.length){alert("No cases match these filters.");return}
+ var J=window.jspdf,cap=window.Capacitor;
+ if(!J||!cap||!cap.isNativePlatform||!cap.isNativePlatform()){doExport(list);return}
+ try{
+  var doc=new J.jsPDF({orientation:"landscape",unit:"mm",format:"a4"});
+  doc.setFontSize(15);doc.text("Urology OT List",14,14);
+  var y=20,cons=["RN","SK","SJ","PS"].filter(function(c){return list.some(function(x){return x.consultant===c})});
+  list.forEach(function(x){if(x.consultant&&cons.indexOf(x.consultant)<0)cons.push(x.consultant)});
+  cons.forEach(function(c){["Consultant","Fellow"].forEach(function(t){
+   var rows=list.filter(function(x){return x.consultant===c&&x.ot===t}).sort(function(a,b){return (+a.otno||0)-(+b.otno||0)||(a.pdosx||"").localeCompare(b.pdosx||"")});
+   if(!rows.length)return;
+   if(y>170){doc.addPage();y=14}
+   doc.setFontSize(11);doc.text("Consultant "+c+" - "+t+" OT",14,y);
+   doc.autoTable({startY:y+2,margin:{left:14,right:14},styles:{fontSize:8,cellPadding:1.5},headStyles:{fillColor:[31,92,77]},
+    head:[["OT","Name","Age/Sex","UHID","Diagnosis","Plan","Comorbidities","Mobile","PDOSx","Remarks"]],
+    body:rows.map(function(r){return [r.otno||"",r.name||"",(r.age||"")+"/"+(r.sex||""),r.uhid||"",r.dx||"",r.plan||"",r.comorb||"",(r.mob||"")+(r.alt?"\n"+r.alt:""),fmtDate(r.pdosx),r.remarks||""]})});
+   y=doc.lastAutoTable.finalY+9});});
+  var b64=doc.output("datauristring").split(",")[1],fn="OT-list-"+ymd(new Date())+".pdf",P=cap.Plugins;
+  P.Filesystem.writeFile({path:fn,data:b64,directory:"CACHE"})
+   .then(function(r){return P.Share.share({title:fn,files:[r.uri],dialogTitle:"Save or share PDF"})})
+   .catch(function(e){if(!/cancel/i.test(e&&e.message||""))alert("Could not share the PDF: "+(e&&e.message||e))});
+ }catch(e){alert("Could not create the PDF: "+e.message)}
+}
+
+/* export filters */
+var FI=["fc","fa","fb"];
+function filtered(){var c=$("fc").value,a=$("fa").value,b=$("fb").value;
+ return cases.filter(function(x){return (!c||x.consultant===c)&&(!a||(x.pdosx&&x.pdosx>=a))&&(!b||(x.pdosx&&x.pdosx<=b))})}
+function upd(){$("fcount").textContent=filtered().length+" of "+cases.length+" cases will be exported"}
+function ymd(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function setDay(add){var d=new Date();d.setDate(d.getDate()+add);$("fa").value=$("fb").value=ymd(d);upd()}
+FI.forEach(function(id){$(id).onchange=upd});
+$("fToday").onclick=function(){setDay(0)};
+$("fTom").onclick=function(){setDay(1)};
+$("fReset").onclick=function(){FI.forEach(function(id){$(id).value=""});upd()};
+$("fx").onclick=function(){$("fdlg").close()};
+$("fgo").onclick=function(){var l=filtered();$("fdlg").close();pdfExport(l)};
+$("pdfBtn").onclick=function(){if(!cases.length){alert("No cases to export.");return}upd();$("fdlg").showModal()};
+
+/* settings */
+$("setBtn").onclick=function(){$("key").value=localStorage.getItem("akey")||"";$("dlg").showModal()};
+$("dlgX").onclick=function(){$("dlg").close()};
+$("dlgS").onclick=function(){localStorage.setItem("akey",$("key").value.trim());$("dlg").close()};
+
+/* photo -> fields */
+function shrink(file){return new Promise(function(res,rej){
+ var img=new Image(),u=URL.createObjectURL(file);
+ img.onload=function(){var m=1800,s=Math.min(1,m/Math.max(img.width,img.height)),c=document.createElement("canvas");
+  c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+  var d=c.toDataURL("image/jpeg",.85);URL.revokeObjectURL(u);res(d)};
+ img.onerror=function(){rej(new Error("Could not open image"))};img.src=u})}
+
+var PROMPT='These images are an Indian urology hospital OT booking: patient stickers and/or handwritten notes. Extract fields and reply with ONLY one JSON object, no markdown. Keys: name, uhid, age (number only), sex ("M" or "F"), dx (diagnosis), plan (planned surgery), mob (mobile), alt (alternate mobile), comorb (comorbidities such as DM, HTN, CAD, as written), pdosx (planned date of surgery as YYYY-MM-DD), remarks, consultant (one of RN, SK, SJ, PS if written, else ""), ot ("Consultant" or "Fellow" if stated, else ""), otno (one of 4,5,6,7,11 if stated, else ""). Use "" for anything not clearly visible. Never guess digits of UHID or phone numbers; if unclear, use "".';
+
+async function readImages(files){
+ var key=localStorage.getItem("akey");
+ if(!key){status("Add your API key in Settings to read photos, or type the details by hand.",1);return}
+ if(!navigator.onLine){status("No internet. Type the details by hand.",1);return}
+ status("Reading photo…");
+ try{
+  var parts=[],th=$("thumbs");th.innerHTML="";
+  for(var i=0;i<files.length;i++){var d=await shrink(files[i]);
+   var im=document.createElement("img");im.src=d;th.appendChild(im);
+   parts.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:d.split(",")[1]}})}
+  parts.push({type:"text",text:PROMPT});
+  var r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
+   headers:{"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+   body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:parts}]})});
+  var j=await r.json();
+  if(!r.ok)throw new Error(j.error&&j.error.message||"Request failed");
+  var t=j.content.map(function(b){return b.text||""}).join("").replace(/```json|```/g,"").trim();
+  var o=JSON.parse(t);
+  if(["M","F"].indexOf(o.sex)<0)delete o.sex;
+  if(["4","5","6","7","11"].indexOf(String(o.otno))<0)delete o.otno;else o.otno=String(o.otno);
+  if(["RN","SK","SJ","PS"].indexOf(o.consultant)<0)delete o.consultant;
+  if(["Consultant","Fellow"].indexOf(o.ot)<0)delete o.ot;
+  setForm(o);
+  status("Filled from photo. Check the name, UHID, age and phone numbers against the original before saving.")
+ }catch(e){status("Could not read the photo: "+e.message+". Type the details by hand.",1)}
+}
+$("cam").onchange=function(){if(this.files.length)readImages(this.files);this.value=""};
+$("gal").onchange=function(){if(this.files.length)readImages(this.files);this.value=""};
+
+load();render();
+})();
+</script>
+</body>
+</html>
